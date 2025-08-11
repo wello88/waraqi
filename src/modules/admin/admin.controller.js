@@ -40,6 +40,10 @@ export const adminLogin = async (req, res, next) => {
     if (!isPasswordValid) {
         return next(new AppError(messages.user.invalidCreadintials, 409));
     }
+    // Set isActive to true on successful login
+    if (!user.isActive) {
+        await user.update({ isActive: true });
+    }
 
     // Generate token
     const token = genrateToken({
