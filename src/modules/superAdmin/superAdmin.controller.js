@@ -54,7 +54,7 @@ export const AddUser = async (req, res, next) => {
     if (role !== 'admin' && role !== 'superadmin') {
         return next(new AppError(messages.user.invalidRole), 400);
     }
-    if (role === 'admin' && (!email )) {
+    if (role === 'admin' && !email) {
         return next(new AppError(messages.user.emailRequired), 400);
     }
     if (role === 'admin' && !ministryId) {
@@ -78,7 +78,7 @@ export const AddUser = async (req, res, next) => {
     }
 
     // Hash password
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = hashPassword({ password });
 
     // Create user
     const newUser = await User.create({ userName, password: hashedPassword, role });
@@ -256,7 +256,7 @@ export const getUserById = async (req, res, next) => {
 // update user by id
 export const updateUserById = async (req, res, next) => {
     const { id } = req.params;
-    const { userName, password, email, role , ministryId} = req.body;
+    const { userName, password, email, role, ministryId } = req.body;
 
     if (!userName || !role) {
         return next(new AppError(messages.user.invalidData), 400);
@@ -264,10 +264,6 @@ export const updateUserById = async (req, res, next) => {
 
     const user = await User.findByPk(id);
     if (!user) {
-        return next(new AppError(messages.user.notFound), 404);
-    }
-    const admin = await Admin.findByPk(id);
-    if (!admin) {
         return next(new AppError(messages.user.notFound), 404);
     }
 
@@ -278,24 +274,36 @@ export const updateUserById = async (req, res, next) => {
     if (role === 'admin' && !email) {
         return next(new AppError(messages.user.emailRequired), 400);
     }
-    // if is admin check if ministry exists
     if (role === 'admin' && !ministryId) {
         return next(new AppError(messages.user.invalidMinistry), 400);
     }
 
-    const updatedData = { userName, role, };
+    // Prepare user update data
+    const updatedData = { userName, role };
     if (password) {
-        updatedData.password = hashPassword(password);
+        updatedData.password = hashPassword({ password });
     }
-    const adminData ={email,ministryId}
-    
+
     await user.update(updatedData);
-    await admin.update(adminData);
-    user.password= undefined
-    admin.password= undefined
+
+    let admin = null;
+    if (role === 'admin') {
+        admin = await Admin.findOne({ where: { AdminId: id } });
+        if (admin) {
+            await admin.update({ email, ministryId });
+        } else {
+            // If admin record doesn't exist, create it
+            admin = await Admin.create({ AdminId: id, email, ministryId });
+        }
+    }
+
     res.status(200).json({
         message: messages.user.updateSuccessfully,
-        user,
+        user: {
+            id: user.id,
+            userName: user.userName,
+            role: user.role
+        },
         admin
     });
 }

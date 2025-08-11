@@ -1,6 +1,6 @@
 import Services from '../../../db/models/services.model.js';
 import { AppError } from '../../utils/appError.js';
-import {messages} from '../../utils/constant/messages.js';
+import { messages } from '../../utils/constant/messages.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../utils/cloudinary.js';
 import { ApiFeature } from '../../utils/apiFeature.js';
 import { User, Admin } from '../../../db/index.js';
@@ -17,13 +17,13 @@ export const adminLogin = async (req, res, next) => {
     }
 
     // Find user and include admin details with alias
-    const user = await User.findOne({ 
+    const user = await User.findOne({
         where: { userName },
         include: [{
             model: Admin,
             as: 'admin',
             attributes: ['email', 'ministryId'],
-            required: true // Changed to INNER JOIN to ensure admin exists
+            required: true // INNER JOIN to ensure admin exists
         }]
     });
 
@@ -32,22 +32,22 @@ export const adminLogin = async (req, res, next) => {
     }
 
     // Compare raw password with hashed password
-    const isPasswordValid = comparePassword({ 
+    const isPasswordValid = comparePassword({
         password,
         hashPassword: user.password
     });
 
     if (!isPasswordValid) {
-        return next(new AppError(messages.user.invalidCreadintials, 401));
+        return next(new AppError(messages.user.invalidCreadintials, 409));
     }
 
     // Generate token
-    const token = genrateToken({ 
-        payload: { 
-            id: user.id, 
+    const token = genrateToken({
+        payload: {
+            id: user.id,
             role: user.role,
             ministryId: user.admin.ministryId
-        } 
+        }
     });
 
     res.status(200).json({
@@ -66,14 +66,14 @@ export const adminLogin = async (req, res, next) => {
 
 // Add service
 export const addService = async (req, res, next) => {
-    const { 
-        name, 
-        steps, 
-        price, 
-        duration, 
-        locationAndTime, 
-        info, 
-        ServiceLink 
+    const {
+        name,
+        steps,
+        price,
+        duration,
+        locationAndTime,
+        info,
+        ServiceLink
     } = req.body;
 
     // Validation
@@ -149,14 +149,14 @@ export const getServiceById = async (req, res, next) => {
 // Update service
 export const updateService = async (req, res, next) => {
     const { id } = req.params;
-    const { 
-        name, 
-        steps, 
-        price, 
-        duration, 
-        locationAndTime, 
-        info, 
-        ServiceLink 
+    const {
+        name,
+        steps,
+        price,
+        duration,
+        locationAndTime,
+        info,
+        ServiceLink
     } = req.body;
 
     const service = await Services.findByPk(id);
