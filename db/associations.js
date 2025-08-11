@@ -4,7 +4,7 @@ import Ministries from './models/ministries.model.js';
 import Services from './models/services.model.js';
 
 // User <-> Admin
-User.hasMany(Admin, { foreignKey: 'AdminId', as: 'admin' });
+User.hasMany(Admin, { foreignKey: 'AdminId', as: 'admin' , onDelete: 'CASCADE' });
 Admin.belongsTo(User, { foreignKey: 'AdminId', as: 'user' });
 
 // Admin <-> Ministries

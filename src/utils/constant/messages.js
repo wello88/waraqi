@@ -24,6 +24,7 @@ const genrateMessage = (entity)=>({
     contentRequired:'content is required',
     emailRequired:'email is required',
     invalidMinistry:'invalid ministry',
+    invalidRole:'invalid role',
 })
 export const messages = {
     user:genrateMessage('user'),

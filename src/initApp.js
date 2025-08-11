@@ -223,6 +223,7 @@ export const initApp =  (app,express) => {
 
 
     app.use('/superAdmin', allRouters.superAdminRouter);
+    app.use('/admin', allRouters.adminRouter);
   
     app.use(globalErrorHandler)
 }   

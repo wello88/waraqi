@@ -3,7 +3,8 @@ import { AppError } from "../../utils/appError.js";
 import { messages } from "../../utils/constant/messages.js";
 import { comparePassword, hashPassword } from "../../utils/hashAndcompare.js";
 import { genrateToken } from "../../utils/token.js";
-import { uploadToCloudinary } from '../../utils/cloudinary.js';
+import { deleteFromCloudinary, uploadToCloudinary } from '../../utils/cloudinary.js';
+import { ApiFeature } from "../../utils/apiFeature.js";
 
 export const SuperLogin = async (req,res,next)=>{
 
@@ -141,5 +142,177 @@ export const addMinistry = async (req, res, next) => {
             name: newMinistry.name,
             logo: newMinistry.logo
         }
+    });
+}
+
+// Get all ministries
+export const getAllMinistries = async (req, res, next) => {
+    const apiFetures = new ApiFeature(Ministries, req.query)
+        .pagination()
+        .filter()
+        .sort()
+        .select()
+
+    const result = await apiFetures.execute();
+
+    if (!result) {
+        return next(new AppError(messages.ministry.notFound), 404);
+    }
+    return res.status(200).json(result)
+};
+
+
+// get ministry by id
+export const getMinistryById = async (req, res, next) => {
+    const { id } = req.params;
+    const ministry = await Ministries.findByPk(id);
+    if (!ministry) {
+        return next(new AppError(messages.ministry.notFound), 404);
+    }
+    return res.status(200).json(ministry);
+}
+
+// update ministry by id
+export const updateMinistryById = async (req, res, next) => {
+    const { id } = req.params;
+    const { name, location, siteLink } = req.body;
+
+    if (!name || !location || !siteLink) {
+        return next(new AppError(messages.user.contentRequired), 400);
+    }
+
+    const ministry = await Ministries.findByPk(id);
+    if (!ministry) {
+        return next(new AppError(messages.ministry.notFound), 404);
+    }
+
+    let logoUrl = ministry.logo;
+    if (req.file) {
+        try {
+            const uploadResult = await uploadToCloudinary(req.file.buffer, 'ministries_logos');
+            logoUrl = uploadResult.secure_url;
+        } catch (err) {
+            return next(new AppError('Failed to upload logo', 500));
+        }
+    }
+
+    await ministry.update({ name, logo: logoUrl, location, siteLink });
+
+    res.status(200).json({
+        message: messages.user.updateSuccessfully,
+        ministry
+    });
+}
+
+// delete ministry by id
+export const deleteMinistryById = async (req, res, next) => {
+    const { id } = req.params;
+
+    const ministry = await Ministries.findByPk(id);
+    if (!ministry) {
+        return next(new AppError(messages.ministry.notFound), 404);
+    }
+    if (ministry.logo) {
+        try {
+            await deleteFromCloudinary(ministry.logo);
+        } catch (err) {
+            return next(new AppError('Failed to delete logo from cloud storage', 500));
+        }
+    }
+    await ministry.destroy();
+
+    res.status(200).json({
+        message: messages.user.deleteSuccessfully,
+        ministryId: id
+    });
+}
+
+// get all users
+export const getAllUsers = async (req, res, next) => {
+    const apiFetures = new ApiFeature(User, req.query)
+        .pagination()
+        .filter()
+        .sort()
+        .select()
+
+    const result = await apiFetures.execute();
+
+    if (!result) {
+        return next(new AppError(messages.user.notFound), 404);
+    }
+    return res.status(200).json(result);
+}
+
+// get user by id
+export const getUserById = async (req, res, next) => {
+    const { id } = req.params;
+    const user = await User.findByPk(id);
+    if (!user) {
+        return next(new AppError(messages.user.notFound), 404);
+    }
+    return res.status(200).json(user);
+}
+
+// update user by id
+export const updateUserById = async (req, res, next) => {
+    const { id } = req.params;
+    const { userName, password, email, role , ministryId} = req.body;
+
+    if (!userName || !role) {
+        return next(new AppError(messages.user.invalidData), 400);
+    }
+
+    const user = await User.findByPk(id);
+    if (!user) {
+        return next(new AppError(messages.user.notFound), 404);
+    }
+    const admin = await Admin.findByPk(id);
+    if (!admin) {
+        return next(new AppError(messages.user.notFound), 404);
+    }
+
+    if (role !== 'admin' && role !== 'superadmin') {
+        return next(new AppError(messages.user.invalidRole), 400);
+    }
+
+    if (role === 'admin' && !email) {
+        return next(new AppError(messages.user.emailRequired), 400);
+    }
+    // if is admin check if ministry exists
+    if (role === 'admin' && !ministryId) {
+        return next(new AppError(messages.user.invalidMinistry), 400);
+    }
+
+    const updatedData = { userName, role, };
+    if (password) {
+        updatedData.password = hashPassword(password);
+    }
+    const adminData ={email,ministryId}
+    
+    await user.update(updatedData);
+    await admin.update(adminData);
+    user.password= undefined
+    admin.password= undefined
+    res.status(200).json({
+        message: messages.user.updateSuccessfully,
+        user,
+        admin
+    });
+}
+
+// delete user by id
+export const deleteUserById = async (req, res, next) => {
+    const { id } = req.params;
+
+    const user = await User.findByPk(id);
+    if (!user) {
+        return next(new AppError(messages.user.notFound), 404);
+    }
+
+    await user.destroy();
+
+    res.status(200).json({
+        message: messages.user.deleteSuccessfully,
+        userId: id
     });
 }
