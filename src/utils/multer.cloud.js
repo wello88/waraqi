@@ -1,6 +1,6 @@
 import multer from "multer";
 
-const fileValidation = {
+export const fileValidation = {
     image:['image/jpg','image/jpeg','image/png'],
     file:['application/pdf','application/msword'],
     video:['video/mp4']

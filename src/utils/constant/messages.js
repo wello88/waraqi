@@ -25,11 +25,13 @@ const genrateMessage = (entity)=>({
     emailRequired:'email is required',
     invalidMinistry:'invalid ministry',
     invalidRole:'invalid role',
+    requiredFields:`${entity} required fields`,
 })
 export const messages = {
     user:genrateMessage('user'),
     file:{required:'file is required'},
     review:genrateMessage('review'),
     ministry:genrateMessage('ministry'),
+    service:genrateMessage('service'),
 
 }

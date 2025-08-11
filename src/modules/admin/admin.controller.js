@@ -88,7 +88,7 @@ export const addService = async (req, res, next) => {
     // Check if service already exists
     const existingService = await Services.findOne({ where: { name } });
     if (existingService) {
-        return next(new AppError(messages.service.alreadyExists, 409));
+        return next(new AppError(messages.service.alreadyExist, 409));
     }
 
     let documentUrl;
