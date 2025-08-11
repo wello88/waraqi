@@ -22,10 +22,13 @@ const genrateMessage = (entity)=>({
     notFound:`${entity} not found`,
     logoutsuccessfully:'logout successfully',
     contentRequired:'content is required',
+    emailRequired:'email is required',
+    invalidMinistry:'invalid ministry',
 })
 export const messages = {
     user:genrateMessage('user'),
     file:{required:'file is required'},
     review:genrateMessage('review'),
+    ministry:genrateMessage('ministry'),
 
 }

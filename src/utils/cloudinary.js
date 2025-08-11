@@ -14,7 +14,7 @@ cloudinary.config({
 export const uploadToCloudinary = (buffer, folder) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { folder: `CARMATE/${folder}` },
+            { folder: `waraqi/${folder}` },
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result);

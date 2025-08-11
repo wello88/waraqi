@@ -1,7 +1,5 @@
 import { User } from "../../db/index.js";
 import { AppError } from "../utils/appError.js";
-import { statusEnum } from "../utils/constant/enums.js";
-import { messages } from "../utils/constant/messages.js";
 import { verifyToken } from "../utils/token.js";
 
 export const isAuthenticated = () => {

@@ -1,6 +1,6 @@
 import path from "path"
 import dotenv from 'dotenv'
-import { connectDB } from "../db/connection.js"
+// import { connectDB } from "../db/connection.js"
 import { globalErrorHandler } from "./utils/appError.js"
 import * as allRouters from './index.js'
 import { User } from "../db/index.js"
@@ -222,7 +222,7 @@ export const initApp =  (app,express) => {
 
 
 
-
+    app.use('/superAdmin', allRouters.superAdminRouter);
   
     app.use(globalErrorHandler)
 }   
