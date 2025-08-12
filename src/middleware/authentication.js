@@ -15,13 +15,16 @@ export const isAuthenticated = () => {
                 return next(new AppError('invalid payload', 401));
             }
 
+            // Attach the payload (id, role, ministryId, etc.) to req.authUser
+            req.authUser = payload;
+
+            // Optionally, you can also fetch the user from DB if you need more info:
             const user = await User.findByPk(payload.id);
             if (!user) {
                 return next(new AppError('User not found', 401));
             }
+            req.authUser = { ...payload, user };
 
-            // Set the authenticated user in req
-            req.authUser = user;
             next();
         } catch (error) {
             return next(new AppError('Authentication failed', 401));

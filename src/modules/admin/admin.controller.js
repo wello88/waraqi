@@ -3,9 +3,10 @@ import { AppError } from '../../utils/appError.js';
 import { messages } from '../../utils/constant/messages.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../utils/cloudinary.js';
 import { ApiFeature } from '../../utils/apiFeature.js';
-import { User, Admin } from '../../../db/index.js';
+import { User, Admin, Ministries } from '../../../db/index.js';
 import { comparePassword } from '../../utils/hashAndcompare.js';
 import { genrateToken } from '../../utils/token.js';
+import { uploadToSupabase, sanitizeFileName, deleteFromSupabase } from "../../utils/supabase.js";
 
 
 export const adminLogin = async (req, res, next) => {
@@ -69,6 +70,8 @@ export const adminLogin = async (req, res, next) => {
 
 
 // Add service
+
+
 export const addService = async (req, res, next) => {
     const {
         name,
@@ -79,6 +82,8 @@ export const addService = async (req, res, next) => {
         info,
         ServiceLink
     } = req.body;
+
+    const { ministryId, id } = req.authUser;
 
     // Validation
     if (!name || !price || !duration) {
@@ -94,10 +99,17 @@ export const addService = async (req, res, next) => {
     let documentUrl;
     if (req.file) {
         try {
-            const uploadResult = await uploadToCloudinary(req.file.buffer, 'services_documents');
-            documentUrl = uploadResult.secure_url;
+            const safeFileName = sanitizeFileName(req.file.originalname);
+
+            documentUrl = await uploadToSupabase(
+                req.file.buffer,
+                safeFileName,
+                "waraqi_bucket",
+                req.file.mimetype
+            );
         } catch (err) {
-            return next(new AppError('Failed to upload document', 500));
+            console.error("Upload error:", err);
+            return next(new AppError(`Failed to upload document: ${err.message}`, 500));
         }
     }
 
@@ -111,8 +123,8 @@ export const addService = async (req, res, next) => {
         locationAndTime,
         info,
         ServiceLink,
-        ministryId: req.authUser.ministryId,
-        AddedBy: req.authUser.id
+        ministryId,
+        AddedBy: id
     });
 
     res.status(201).json({
@@ -121,34 +133,48 @@ export const addService = async (req, res, next) => {
     });
 };
 
+
 // Get all services
 export const getAllServices = async (req, res, next) => {
-    const apiFeatures = new ApiFeature(Services, req.query)
-        .pagination()
-        .filter()
-        .sort()
-        .select();
+    const services = await Services.findAll({
+        include: [
+            {
+                model: Ministries,
+                as: 'ministry',
+                attributes: ['id', 'name', 'logo', 'location', 'siteLink']
+            }
+        ]
+    });
 
-    const result = await apiFeatures.execute();
-
-    if (!result) {
+    if (!services || services.length === 0) {
         return next(new AppError(messages.service.notFound, 404));
     }
 
-    res.status(200).json(result);
+    res.status(200).json(services);
 };
 
 // Get service by ID
 export const getServiceById = async (req, res, next) => {
     const { id } = req.params;
 
-    const service = await Services.findByPk(id);
+    const service = await Services.findByPk(id, {
+        include: [
+            {
+                model: Ministries,
+                as: 'ministry',
+                attributes: ['id', 'name', 'logo', 'location', 'siteLink']
+            }
+        ]
+    });
+
     if (!service) {
         return next(new AppError(messages.service.notFound, 404));
     }
 
     res.status(200).json(service);
 };
+
+
 
 // Update service
 export const updateService = async (req, res, next) => {
@@ -174,17 +200,24 @@ export const updateService = async (req, res, next) => {
     }
 
     let documentUrl = service.document;
+
     if (req.file) {
         try {
-            // Delete old document if exists
+            // If there's an old document in Supabase, remove it
             if (service.document) {
-                await deleteFromCloudinary(service.document);
+                // Extract the file path from the public URL
+                const oldFilePath = service.document.split("/waraqi_bucket/")[1];
+                if (oldFilePath) {
+                    await deleteFromSupabase(oldFilePath);
+                }
             }
-            // Upload new document
-            const uploadResult = await uploadToCloudinary(req.file.buffer, 'services_documents');
-            documentUrl = uploadResult.secure_url;
+
+            // Upload the new file
+            const fileExt = req.file.originalname.split(".").pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+            documentUrl = await uploadToSupabase(req.file.buffer, fileName);
         } catch (err) {
-            return next(new AppError('Failed to update document', 500));
+            return next(new AppError("Failed to update document", 500));
         }
     }
 
@@ -205,6 +238,10 @@ export const updateService = async (req, res, next) => {
     });
 };
 
+
+
+
+
 // Delete service
 export const deleteService = async (req, res, next) => {
     const { id } = req.params;
@@ -219,19 +256,19 @@ export const deleteService = async (req, res, next) => {
         return next(new AppError(messages.user.notauthorized, 403));
     }
 
-    // Delete document from cloudinary if exists
+    // Delete document from Supabase if exists
     if (service.document) {
         try {
-            await deleteFromCloudinary(service.document);
+            await deleteFromSupabase(service.document, "waraqi_bucket");
         } catch (err) {
-            return next(new AppError('Failed to delete document', 500));
+            return next(new AppError("Failed to delete document from Supabase", 500));
         }
     }
 
     await service.destroy();
 
     res.status(200).json({
-        message: messages.service.deleted,
-        serviceId: id
+        message: messages.service.deleteSuccessfully,
+        serviceId: id,
     });
 };

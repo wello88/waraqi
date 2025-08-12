@@ -16,3 +16,7 @@ export const cloudupload = ({allowFile = fileValidation.image}={}) => {
     
     return multer({storage, fileFilter, limits: {fileSize: 50 * 1024 * 1024}}) // 50MB limit
 }
+
+
+const storage = multer.memoryStorage();
+export const upload = multer({ storage });
